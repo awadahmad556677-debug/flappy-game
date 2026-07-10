@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ar">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
@@ -26,12 +26,13 @@
   #ui {
     position: absolute;
     top: 20px;
-    left: 0;
-    right: 0;
-    text-align: center;
+    left: 20px;
+    right: 20px;
+    display: flex;
+    justify-content: space-between;
     color: white;
     font-family: Arial, sans-serif;
-    font-size: 40px;
+    font-size: 24px;
     font-weight: bold;
     text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
     pointer-events: none;
@@ -52,13 +53,17 @@
 </head>
 <body>
 <canvas id="gameCanvas"></canvas>
-<div id="ui">0</div>
+<div id="ui">
+  <div>النقاط: <span id="currentScore">0</span></div>
+  <div>أعلى سكور: <span id="highScore">0</span></div>
+</div>
 <div id="message">اضغط في أي مكان للطيران</div>
 
 <script>
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
-const scoreEl = document.getElementById('ui');
+const currentScoreEl = document.getElementById('currentScore');
+const highScoreEl = document.getElementById('highScore');
 const messageEl = document.getElementById('message');
 
 // حجم الشاشة يتناسب مع الموبايل
@@ -84,6 +89,11 @@ let pipeWidth = 60;
 let pipeGap = 170;
 let pipeSpeed = 2.5;
 let score = 0;
+
+// تحميل أعلى سكور من ذاكرة الموبايل
+let highScore = localStorage.getItem('flappy_high_score') || 0;
+highScoreEl.textContent = highScore;
+
 let gameStarted = false;
 let gameOver = false;
 let frame = 0;
@@ -96,7 +106,7 @@ function resetGame() {
   frame = 0;
   gameOver = false;
   gameStarted = false;
-  scoreEl.textContent = '0';
+  currentScoreEl.textContent = '0';
   messageEl.textContent = 'اضغط في أي مكان للطيران';
   messageEl.style.display = 'block';
 }
@@ -153,7 +163,7 @@ function update() {
     if (!pipes[i].passed && pipes[i].x + pipeWidth < bird.x) {
       pipes[i].passed = true;
       score++;
-      scoreEl.textContent = score;
+      currentScoreEl.textContent = score;
     }
 
     // إزالة الأعمدة اللي خرجت من الشاشة
@@ -181,7 +191,17 @@ function update() {
 
 function endGame() {
   gameOver = true;
-  messageEl.textContent = 'خسرت! نقاطك: ' + score + ' — اضغط للمحاولة تاني';
+  
+  // التحقق من أعلى سكور وحفظه
+  if (score > highScore) {
+    highScore = score;
+    highScoreEl.textContent = highScore;
+    localStorage.setItem('flappy_high_score', highScore);
+    messageEl.textContent = '🔥 رقم قياسي جديد! نقاطك: ' + score + ' — اضغط للمحاولة تاني';
+  } else {
+    messageEl.textContent = 'خسرت! نقاطك: ' + score + ' — اضغط للمحاولة تاني';
+  }
+  
   messageEl.style.display = 'block';
 }
 
