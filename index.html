@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ar">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
@@ -26,13 +26,12 @@
   #ui {
     position: absolute;
     top: 20px;
-    left: 20px;
-    right: 20px;
-    display: flex;
-    justify-content: space-between;
+    left: 0;
+    right: 0;
+    text-align: center;
     color: white;
     font-family: Arial, sans-serif;
-    font-size: 24px;
+    font-size: 40px;
     font-weight: bold;
     text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
     pointer-events: none;
@@ -53,17 +52,26 @@
 </head>
 <body>
 <canvas id="gameCanvas"></canvas>
-<div id="ui">
-  <div>النقاط: <span id="currentScore">0</span></div>
-  <div>أعلى سكور: <span id="highScore">0</span></div>
-</div>
+<div id="ui">0</div>
 <div id="message">اضغط في أي مكان للطيران</div>
 
+<audio id="flapSound" src="flap.mp3" preload="auto"></audio>
+<audio id="hitSound" src="Hit.mp3" preload="auto"></audio>
+<audio id="pointSound" src="Point.mp3" preload="auto"></audio>
+
 <script>
+const flapSound = document.getElementById('flapSound');
+const hitSound = document.getElementById('hitSound');
+const pointSound = document.getElementById('pointSound');
+
+function playSound(sound) {
+  sound.currentTime = 0;
+  sound.play().catch(function() {});
+}
+
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
-const currentScoreEl = document.getElementById('currentScore');
-const highScoreEl = document.getElementById('highScore');
+const scoreEl = document.getElementById('ui');
 const messageEl = document.getElementById('message');
 
 // حجم الشاشة يتناسب مع الموبايل
@@ -89,11 +97,6 @@ let pipeWidth = 60;
 let pipeGap = 170;
 let pipeSpeed = 2.5;
 let score = 0;
-
-// تحميل أعلى سكور من ذاكرة الموبايل
-let highScore = localStorage.getItem('flappy_high_score') || 0;
-highScoreEl.textContent = highScore;
-
 let gameStarted = false;
 let gameOver = false;
 let frame = 0;
@@ -106,7 +109,7 @@ function resetGame() {
   frame = 0;
   gameOver = false;
   gameStarted = false;
-  currentScoreEl.textContent = '0';
+  scoreEl.textContent = '0';
   messageEl.textContent = 'اضغط في أي مكان للطيران';
   messageEl.style.display = 'block';
 }
@@ -121,6 +124,7 @@ function flap() {
     messageEl.style.display = 'none';
   }
   bird.velocity = bird.jump;
+  playSound(flapSound);
 }
 
 // التحكم باللمس (موبايل) والماوس (كمبيوتر)
@@ -163,7 +167,8 @@ function update() {
     if (!pipes[i].passed && pipes[i].x + pipeWidth < bird.x) {
       pipes[i].passed = true;
       score++;
-      currentScoreEl.textContent = score;
+      scoreEl.textContent = score;
+      playSound(pointSound);
     }
 
     // إزالة الأعمدة اللي خرجت من الشاشة
@@ -191,17 +196,8 @@ function update() {
 
 function endGame() {
   gameOver = true;
-  
-  // التحقق من أعلى سكور وحفظه
-  if (score > highScore) {
-    highScore = score;
-    highScoreEl.textContent = highScore;
-    localStorage.setItem('flappy_high_score', highScore);
-    messageEl.textContent = '🔥 رقم قياسي جديد! نقاطك: ' + score + ' — اضغط للمحاولة تاني';
-  } else {
-    messageEl.textContent = 'خسرت! نقاطك: ' + score + ' — اضغط للمحاولة تاني';
-  }
-  
+  playSound(hitSound);
+  messageEl.textContent = 'خسرت! نقاطك: ' + score + ' — اضغط للمحاولة تاني';
   messageEl.style.display = 'block';
 }
 
