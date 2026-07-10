@@ -1,4 +1,4 @@
-const CACHE_NAME = 'flappy-game-v1';
+const CACHE_NAME = 'flappy-game-v2';
 const urlsToCache = [
   './',
   './index.html',
@@ -9,6 +9,21 @@ self.addEventListener('install', function(event) {
   event.waitUntil(
     caches.open(CACHE_NAME).then(function(cache) {
       return cache.addAll(urlsToCache);
+    })
+  );
+  self.skipWaiting(); // إجبار التحديث فوراً
+});
+
+self.addEventListener('activate', function(event) {
+  event.waitUntil(
+    caches.keys().then(function(cacheNames) {
+      return Promise.all(
+        cacheNames.map(function(cacheName) {
+          if (cacheName !== CACHE_NAME) {
+            return caches.delete(cacheName); // مسح الكاش القديم
+          }
+        })
+      );
     })
   );
 });
