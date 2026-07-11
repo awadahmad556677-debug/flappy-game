@@ -2,64 +2,71 @@
 <html lang="ar">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>لعبة الطائر</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#4ec0ca">
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body {
+  html, body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
     background: #1a1a2e;
     display: flex;
     justify-content: center;
     align-items: center;
-    height: 100vh;
     overflow: hidden;
-    touch-action: manipulation;
+    touch-action: none;
   }
   #gameCanvas {
     background: linear-gradient(#5ec8e8, #bdeee0);
     display: block;
-    max-width: 100vw;
-    max-height: 100vh;
+    width: 100vw;
+    height: 100vh;
+    object-fit: cover;
   }
   #ui {
     position: absolute;
-    top: 20px;
+    top: 40px;
     left: 0;
     right: 0;
     text-align: center;
     color: white;
     font-family: Arial, sans-serif;
-    font-size: 40px;
+    font-size: 50px;
     font-weight: bold;
     text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
     pointer-events: none;
+    z-index: 10;
   }
   #highscore {
     position: absolute;
-    top: 68px;
+    top: 95px;
     left: 0;
     right: 0;
     text-align: center;
     color: #ffe680;
     font-family: Arial, sans-serif;
-    font-size: 18px;
+    font-size: 20px;
     font-weight: bold;
     text-shadow: 1px 1px 3px rgba(0,0,0,0.6);
     pointer-events: none;
+    z-index: 10;
   }
   #message {
     position: absolute;
     top: 45%;
-    left: 0;
-    right: 0;
+    left: 10px;
+    right: 10px;
     text-align: center;
     color: white;
     font-family: Arial, sans-serif;
-    font-size: 24px;
+    font-size: 26px;
     text-shadow: 2px 2px 4px rgba(0,0,0,0.7);
     pointer-events: none;
+    z-index: 10;
   }
   #shareBtn {
     position: absolute;
@@ -68,17 +75,19 @@
     right: 0;
     text-align: center;
     display: none;
+    z-index: 10;
   }
   #shareBtn button {
     background: #25d366;
     color: white;
     border: none;
-    padding: 10px 24px;
+    padding: 12px 28px;
     border-radius: 25px;
-    font-size: 16px;
+    font-size: 18px;
     font-family: Arial, sans-serif;
     font-weight: bold;
     box-shadow: 0 3px 8px rgba(0,0,0,0.3);
+    cursor: pointer;
   }
 </style>
 </head>
@@ -90,7 +99,7 @@
 <div id="shareBtn"><button onclick="shareScore(event)">📤 شارك نتيجتك</button></div>
 
 <script>
-// نظام الصوت باستخدام Web Audio API (أضمن على الموبايل)
+// نظام الصوت باستخدام Web Audio API
 let audioCtx = null;
 let soundBuffers = {};
 let audioReady = false;
@@ -145,9 +154,9 @@ try {
 } catch(e) {}
 highscoreEl.textContent = 'أعلى نتيجة: ' + highScore;
 
-// حجم الشاشة يتناسب مع الموبايل
+// جعل حجم الكانفاس يملأ الشاشة بالكامل بدون حدود ثابتة
 function resize() {
-  canvas.width = Math.min(window.innerWidth, 500);
+  canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
 }
 resize();
@@ -155,17 +164,17 @@ window.addEventListener('resize', resize);
 
 // إعدادات الطائر
 let bird = {
-  x: 80,
+  x: window.innerWidth * 0.25, // متناسب مع عرض الشاشة
   y: canvas.height / 2,
   radius: 15,
   velocity: 0,
-  gravity: 0.5,
-  jump: -8.5
+  gravity: 0.4,
+  jump: -7.5
 };
 
 let pipes = [];
-let pipeWidth = 60;
-let pipeGap = 170;
+let pipeWidth = 65;
+let pipeGap = 160;
 let basePipeSpeed = 2.5;
 let pipeSpeed = basePipeSpeed;
 let maxPipeSpeed = 5.5;
@@ -175,7 +184,7 @@ let gameOver = false;
 let frame = 0;
 let wingAngle = 0;
 let wingBoost = 0;
-let groundHeight = 70;
+let groundHeight = 80;
 let groundOffset = 0;
 let shakeAmount = 0;
 let particles = [];
@@ -183,7 +192,7 @@ let particles = [];
 let clouds = [];
 for (let i = 0; i < 5; i++) {
   clouds.push({
-    x: Math.random() * 500,
+    x: Math.random() * canvas.width,
     y: 40 + Math.random() * 150,
     scale: 0.6 + Math.random() * 0.8,
     speed: 0.2 + Math.random() * 0.3
@@ -236,7 +245,7 @@ function flap() {
   playSound('flap');
 }
 
-// التحكم باللمس (موبايل) والماوس (كمبيوتر)
+// التحكم باللمس والماوس
 canvas.addEventListener('touchstart', function(e) {
   e.preventDefault();
   flap();
@@ -258,7 +267,7 @@ function spawnParticles(x, y) {
 }
 
 function createPipe() {
-  let topHeight = Math.random() * (canvas.height - groundHeight - pipeGap - 150) + 50;
+  let topHeight = Math.random() * (canvas.height - groundHeight - pipeGap - 200) + 70;
   pipes.push({
     x: canvas.width,
     top: topHeight,
@@ -268,22 +277,18 @@ function createPipe() {
 }
 
 function update() {
-  // رفرفة الجناح بتفضل شغالة حتى قبل بداية اللعب
   wingAngle += 0.3 + wingBoost * 0.5;
   if (wingBoost > 0) wingBoost -= 0.08;
   if (wingBoost < 0) wingBoost = 0;
 
-  // تحريك السحاب دايمًا (حتى قبل بداية اللعب)
   clouds.forEach(function(c) {
     c.x -= c.speed;
     if (c.x < -80) c.x = canvas.width + 80;
   });
 
-  // تلاشي الاهتزاز
   if (shakeAmount > 0) shakeAmount *= 0.85;
   if (shakeAmount < 0.2) shakeAmount = 0;
 
-  // تحديث الجزيئات (النجوم)
   for (let i = particles.length - 1; i >= 0; i--) {
     let p = particles[i];
     p.x += p.vx;
@@ -297,24 +302,19 @@ function update() {
 
   frame++;
 
-  // تحريك الأرض
   groundOffset -= pipeSpeed;
   if (groundOffset <= -40) groundOffset = 0;
 
-  // حركة الطائر
   bird.velocity += bird.gravity;
   bird.y += bird.velocity;
 
-  // إنشاء أعمدة جديدة كل فترة
-  if (frame % 90 === 0) {
+  if (frame % 95 === 0) {
     createPipe();
   }
 
-  // تحريك الأعمدة
   for (let i = pipes.length - 1; i >= 0; i--) {
     pipes[i].x -= pipeSpeed;
 
-    // احتساب النقاط
     if (!pipes[i].passed && pipes[i].x + pipeWidth < bird.x) {
       pipes[i].passed = true;
       score++;
@@ -322,22 +322,18 @@ function update() {
       playSound('point');
       spawnParticles(bird.x, bird.y);
 
-      // زيادة الصعوبة تدريجيًا كل 5 نقاط
       pipeSpeed = Math.min(basePipeSpeed + Math.floor(score / 5) * 0.4, maxPipeSpeed);
     }
 
-    // إزالة الأعمدة اللي خرجت من الشاشة
     if (pipes[i].x + pipeWidth < 0) {
       pipes.splice(i, 1);
     }
   }
 
-  // تصادم مع الأرض أو السقف
   if (bird.y + bird.radius > canvas.height - groundHeight || bird.y - bird.radius < 0) {
     endGame();
   }
 
-  // تصادم مع الأعمدة
   for (let pipe of pipes) {
     if (
       bird.x + bird.radius > pipe.x &&
@@ -408,11 +404,11 @@ function draw() {
     ctx.fillStyle = grad;
     ctx.fillRect(pipe.x, 0, pipeWidth, pipe.top);
     ctx.fillRect(pipe.x, pipe.bottom, pipeWidth, canvas.height - pipe.bottom);
-    // حواف الأعمدة
+    
     ctx.fillStyle = '#2d8f47';
     ctx.fillRect(pipe.x - 4, pipe.top - 22, pipeWidth + 8, 22);
     ctx.fillRect(pipe.x - 4, pipe.bottom, pipeWidth + 8, 22);
-    // خط لمعة خفيف
+    
     ctx.fillStyle = 'rgba(255,255,255,0.25)';
     ctx.fillRect(pipe.x + 6, 0, 6, pipe.top);
     ctx.fillRect(pipe.x + 6, pipe.bottom, 6, canvas.height - pipe.bottom);
@@ -438,7 +434,7 @@ function draw() {
   ctx.beginPath();
   ctx.arc(0, 0, bird.radius, 0, Math.PI * 2);
   ctx.fill();
-  // عين الطائر
+  
   ctx.fillStyle = '#fff';
   ctx.beginPath();
   ctx.arc(6, -4, 5, 0, Math.PI * 2);
@@ -447,13 +443,13 @@ function draw() {
   ctx.beginPath();
   ctx.arc(8, -4, 2.5, 0, Math.PI * 2);
   ctx.fill();
-  // جناح الطائر (متحرك)
+  
   let flapWing = Math.sin(wingAngle) * (0.5 + wingBoost);
   ctx.fillStyle = '#d4a017';
   ctx.beginPath();
   ctx.ellipse(-3, 2, bird.radius * 0.75, bird.radius * 0.4, flapWing * 0.9, 0, Math.PI * 2);
   ctx.fill();
-  // منقار
+  
   ctx.fillStyle = '#e67e22';
   ctx.beginPath();
   ctx.moveTo(bird.radius - 2, 0);
@@ -463,7 +459,6 @@ function draw() {
   ctx.fill();
   ctx.restore();
 
-  // النجوم (جزيئات السكور)
   particles.forEach(function(p) {
     ctx.globalAlpha = Math.max(p.life, 0);
     ctx.fillStyle = p.color;
