@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>لعبة الطائر</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #1a1a2e;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    overflow: hidden;
+    touch-action: manipulation;
+  }
+  #gameCanvas {
+    background: linear-gradient(#4ec0ca, #a8e6cf);
+    display: block;
+    max-width: 100vw;
+    max-height: 100vh;
+  }
+  #ui {
+    position: absolute;
+    top: 20px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    color: white;
+    font-family: Arial, sans-serif;
+    font-size: 40px;
+    font-weight: bold;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+    pointer-events: none;
+  }
+  #highscore {
+    position: absolute;
+    top: 68px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    color: #ffe680;
+    font-family: Arial, sans-serif;
+    font-size: 18px;
+    font-weight: bold;
+    text-shadow: 1px 1px 3px rgba(0,0,0,0.6);
+    pointer-events: none;
+  }
+  #message {
+    position: absolute;
+    top: 45%;
+    left: 0;
+    right: 0;
+    text-align: center;
+    color: white;
+    font-family: Arial, sans-serif;
+    font-size: 24px;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.7);
+    pointer-events: none;
+  }
+</style>
+</head>
+<body>
+<canvas id="gameCanvas"></canvas>
+<div id="ui">0</div>
+<div id="highscore">أعلى نتيجة: 0</div>
+<div id="message">اضغط في أي مكان للطيران</div>
+
+<script>
+// نظام الصوت باستخدام Web Audio API (أضمن على الموبايل)
+let audioCtx = null;
+let soundBuffers = {};
+let audioReady = false;
+
+function initAudio() {
+  if (audioCtx) return;
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+  const files = { flap: 'flap.mp3', hit: 'hit.mp3', point: 'point.mp3' };
+  const names = Object.keys(files);
+  let loaded = 0;
+
+  names.forEach(function(name) {
+    fetch(files[name])
+      .then(function(res) {
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.arrayBuffer();
+      })
+      .then(function(buf) {
+        return audioCtx.decodeAudioData(buf);
+      })
+      .then(function(decoded) {
+        soundBuffers[name] = decoded;
+        loaded++;
+        if (loaded === names.length) audioReady = true;
+      })
+      .catch(function(err) {
+        console.log('فشل تحميل الصوت: ' + name, err);
+      });
+  });
+}
+
+function playSound(name) {
+  if (!audioCtx || !soundBuffers[name]) return;
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  const source = audioCtx.createBufferSource();
+  source.buffer = soundBuffers[name];
+  source.connect(audioCtx.destination);
+  source.start(0);
+}
+
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const scoreEl = document.getElementById('ui');
+const messageEl = document.getElementById('message');
+const highscoreEl = document.getElementById('highscore');
+
+let highScore = 0;
+try {
+  highScore = parseInt(localStorage.getItem('flappyHighScore')) || 0;
+} catch(e) {}
+highscoreEl.textContent = 'أعلى نتيجة: ' + highScore;
+
+// حجم الشاشة يتناسب مع الموبايل
+function resize() {
+  canvas.width = Math.min(window.innerWidth, 500);
+  canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+// إعدادات الطائر
+let bird = {
+  x: 80,
+  y: canvas.height / 2,
+  radius: 15,
+  velocity: 0,
+  gravity: 0.5,
+  jump: -8.5
+};
+
+let pipes = [];
+let pipeWidth = 60;
+let pipeGap = 170;
+let pipeSpeed = 2.5;
+let score = 0;
+let gameStarted = false;
+let gameOver = false;
+let frame = 0;
+let wingAngle = 0;
+let wingBoost = 0;
+
+function resetGame() {
+  bird.y = canvas.height / 2;
+  bird.velocity = 0;
+  pipes = [];
+  score = 0;
+  frame = 0;
+  gameOver = false;
+  gameStarted = false;
+  scoreEl.textContent = '0';
+  messageEl.textContent = 'اضغط في أي مكان للطيران';
+  messageEl.style.display = 'block';
+}
+
+function flap() {
+  if (!audioCtx) {
+    try {
+      initAudio();
+    } catch(e) {}
+  } else if (audioCtx.state === 'suspended') {
+    audioCtx.resume();
+  }
+  if (gameOver) {
+    resetGame();
+    return;
+  }
+  if (!gameStarted) {
+    gameStarted = true;
+    messageEl.style.display = 'none';
+  }
+  bird.velocity = bird.jump;
+  wingBoost = 1;
+  playSound('flap');
+}
+
+// التحكم باللمس (موبايل) والماوس (كمبيوتر)
+canvas.addEventListener('touchstart', function(e) {
+  e.preventDefault();
+  flap();
+}, { passive: false });
+
+canvas.addEventListener('mousedown', flap);
+
+function createPipe() {
+  let topHeight = Math.random() * (canvas.height - pipeGap - 150) + 50;
+  pipes.push({
+    x: canvas.width,
+    top: topHeight,
+    bottom: topHeight + pipeGap,
+    passed: false
+  });
+}
+
+function update() {
+  // رفرفة الجناح بتفضل شغالة حتى قبل بداية اللعب
+  wingAngle += 0.3 + wingBoost * 0.5;
+  if (wingBoost > 0) wingBoost -= 0.08;
+  if (wingBoost < 0) wingBoost = 0;
+
+  if (!gameStarted || gameOver) return;
+
+  frame++;
+
+  // حركة الطائر
+  bird.velocity += bird.gravity;
+  bird.y += bird.velocity;
+
+  // إنشاء أعمدة جديدة كل فترة
+  if (frame % 90 === 0) {
+    createPipe();
+  }
+
+  // تحريك الأعمدة
+  for (let i = pipes.length - 1; i >= 0; i--) {
+    pipes[i].x -= pipeSpeed;
+
+    // احتساب النقاط
+    if (!pipes[i].passed && pipes[i].x + pipeWidth < bird.x) {
+      pipes[i].passed = true;
+      score++;
+      scoreEl.textContent = score;
+      playSound('point');
+    }
+
+    // إزالة الأعمدة اللي خرجت من الشاشة
+    if (pipes[i].x + pipeWidth < 0) {
+      pipes.splice(i, 1);
+    }
+  }
+
+  // تصادم مع الأرض أو السقف
+  if (bird.y + bird.radius > canvas.height || bird.y - bird.radius < 0) {
+    endGame();
+  }
+
+  // تصادم مع الأعمدة
+  for (let pipe of pipes) {
+    if (
+      bird.x + bird.radius > pipe.x &&
+      bird.x - bird.radius < pipe.x + pipeWidth &&
+      (bird.y - bird.radius < pipe.top || bird.y + bird.radius > pipe.bottom)
+    ) {
+      endGame();
+    }
+  }
+}
+
+function endGame() {
+  gameOver = true;
+  playSound('hit');
+
+  let newRecord = false;
+  if (score > highScore) {
+    highScore = score;
+    newRecord = true;
+    try {
+      localStorage.setItem('flappyHighScore', highScore);
+    } catch(e) {}
+    highscoreEl.textContent = 'أعلى نتيجة: ' + highScore;
+  }
+
+  if (newRecord) {
+    messageEl.textContent = 'رقم قياسي جديد! 🎉 نقاطك: ' + score + ' — اضغط للمحاولة تاني';
+  } else {
+    messageEl.textContent = 'خسرت! نقاطك: ' + score + ' — اضغط للمحاولة تاني';
+  }
+  messageEl.style.display = 'block';
+}
+
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // رسم الأعمدة
+  ctx.fillStyle = '#2ecc71';
+  for (let pipe of pipes) {
+    ctx.fillRect(pipe.x, 0, pipeWidth, pipe.top);
+    ctx.fillRect(pipe.x, pipe.bottom, pipeWidth, canvas.height - pipe.bottom);
+    // حواف الأعمدة
+    ctx.fillStyle = '#27ae60';
+    ctx.fillRect(pipe.x - 3, pipe.top - 20, pipeWidth + 6, 20);
+    ctx.fillRect(pipe.x - 3, pipe.bottom, pipeWidth + 6, 20);
+    ctx.fillStyle = '#2ecc71';
+  }
+
+  // رسم الطائر
+  ctx.save();
+  ctx.translate(bird.x, bird.y);
+  let rotation = Math.min(Math.max(bird.velocity / 10, -0.5), 0.5);
+  ctx.rotate(rotation);
+  ctx.fillStyle = '#f1c40f';
+  ctx.beginPath();
+  ctx.arc(0, 0, bird.radius, 0, Math.PI * 2);
+  ctx.fill();
+  // عين الطائر
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.arc(6, -4, 5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#000';
+  ctx.beginPath();
+  ctx.arc(8, -4, 2.5, 0, Math.PI * 2);
+  ctx.fill();
+  // جناح الطائر (متحرك)
+  let flap = Math.sin(wingAngle) * (0.5 + wingBoost);
+  ctx.fillStyle = '#d4a017';
+  ctx.beginPath();
+  ctx.ellipse(-3, 2, bird.radius * 0.75, bird.radius * 0.4, flap * 0.9, 0, Math.PI * 2);
+  ctx.fill();
+
+  // منقار
+  ctx.fillStyle = '#e67e22';
+  ctx.beginPath();
+  ctx.moveTo(bird.radius - 2, 0);
+  ctx.lineTo(bird.radius + 10, -3);
+  ctx.lineTo(bird.radius + 10, 3);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
+function loop() {
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+
+loop();
+</script>
+</body>
+</html>
