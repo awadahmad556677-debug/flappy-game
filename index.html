@@ -59,6 +59,25 @@
     text-shadow: 2px 2px 4px rgba(0,0,0,0.7);
     pointer-events: none;
   }
+  #shareBtn {
+    position: absolute;
+    top: 58%;
+    left: 0;
+    right: 0;
+    text-align: center;
+    display: none;
+  }
+  #shareBtn button {
+    background: #25d366;
+    color: white;
+    border: none;
+    padding: 10px 24px;
+    border-radius: 25px;
+    font-size: 16px;
+    font-family: Arial, sans-serif;
+    font-weight: bold;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.3);
+  }
 </style>
 </head>
 <body>
@@ -66,6 +85,7 @@
 <div id="ui">0</div>
 <div id="highscore">أعلى نتيجة: 0</div>
 <div id="message">اضغط في أي مكان للطيران</div>
+<div id="shareBtn"><button onclick="shareScore(event)">📤 شارك نتيجتك</button></div>
 
 <script>
 // نظام الصوت باستخدام Web Audio API (أضمن على الموبايل)
@@ -115,6 +135,7 @@ const ctx = canvas.getContext('2d');
 const scoreEl = document.getElementById('ui');
 const messageEl = document.getElementById('message');
 const highscoreEl = document.getElementById('highscore');
+const shareBtnEl = document.getElementById('shareBtn');
 
 let highScore = 0;
 try {
@@ -143,7 +164,9 @@ let bird = {
 let pipes = [];
 let pipeWidth = 60;
 let pipeGap = 170;
-let pipeSpeed = 2.5;
+let basePipeSpeed = 2.5;
+let pipeSpeed = basePipeSpeed;
+let maxPipeSpeed = 5.5;
 let score = 0;
 let gameStarted = false;
 let gameOver = false;
@@ -165,17 +188,29 @@ for (let i = 0; i < 5; i++) {
   });
 }
 
+function shareScore(e) {
+  e.stopPropagation();
+  const text = 'لعبت لعبة الطائر وسجّلت ' + score + ' نقطة! جرّب تنافسني: https://awadahmad556677-debug.github.io/flappy-game/';
+  if (navigator.share) {
+    navigator.share({ text: text }).catch(function() {});
+  } else {
+    window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
+  }
+}
+
 function resetGame() {
   bird.y = canvas.height / 2;
   bird.velocity = 0;
   pipes = [];
   score = 0;
   frame = 0;
+  pipeSpeed = basePipeSpeed;
   gameOver = false;
   gameStarted = false;
   scoreEl.textContent = '0';
   messageEl.textContent = 'اضغط في أي مكان للطيران';
   messageEl.style.display = 'block';
+  shareBtnEl.style.display = 'none';
 }
 
 function flap() {
@@ -284,6 +319,9 @@ function update() {
       scoreEl.textContent = score;
       playSound('point');
       spawnParticles(bird.x, bird.y);
+
+      // زيادة الصعوبة تدريجيًا كل 5 نقاط
+      pipeSpeed = Math.min(basePipeSpeed + Math.floor(score / 5) * 0.4, maxPipeSpeed);
     }
 
     // إزالة الأعمدة اللي خرجت من الشاشة
@@ -330,6 +368,7 @@ function endGame() {
     messageEl.textContent = 'خسرت! نقاطك: ' + score + ' — اضغط للمحاولة تاني';
   }
   messageEl.style.display = 'block';
+  shareBtnEl.style.display = 'block';
 }
 
 function draw() {
